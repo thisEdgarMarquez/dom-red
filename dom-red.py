@@ -3,7 +3,8 @@
 import requests
 import sys
 import urllib3
-import argparse 
+import argparse
+from threading import Thread
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -25,55 +26,59 @@ _  /_/ // /_/ /  / / / / /     _  _, _//  __/ /_/ /
 """.format(RED, END))
 
 
+def test(line, payload):
+    try:
+        line2 = line.strip()
+
+        if 'http://' in line2:
+            pass
+        elif 'https://' in line2:
+            pass
+        else:
+            line2 = 'http://' + line2
+
+        if args.include:
+            URL = line2 + "/" + payload
+        else:
+            URL = line2 + payload
+
+        response = requests.get(URL, verify=False, timeout=5)
+        if args.verbose:                     
+            print(URL.replace("\n", "") + RED + " ++> " + str(response.status_code) + "\n" + END)
+        else:
+            pass
+
+        try:
+            if response.history:
+
+                for resp in response.history:
+
+                    print("Redirect Found: " + WHITE +  resp.url + END)
+                    
+                print("Final Destination: " + BLUE + response.url + "\n" + END)
+            else:
+                pass
+        except:
+            print("Connection Error!")
+
+    except requests.exceptions.RequestException:
+        print(RED + "Requests error: " + URL + "\nContinue...\n" + END)
+
+    except KeyboardInterrupt:
+        print("Shutdown...")
+        exit(0)
+
 def main():
 
     with open(file) as f:
         print("")
-        
         for line in f:
             with open(payloads) as p:
                 for payload in p:
-                    try:
-                        line2 = line.strip()
-
-                        if 'http://' in line2:
-                            pass
-                        elif 'https://' in line2:
-                            pass
-                        else:
-                            line2 = 'http://' + line2
-
-                        if args.include:
-                            URL = line2 + "/" + payload
-                        else:
-                            URL = line2 + payload
-
-                        response = requests.get(URL, verify=False, timeout=5)
-                        if args.verbose:                     
-                            print(URL.replace("\n", "") + RED + " ++> " + str(response.status_code) + "\n" + END)
-                        else:
-                            pass
-
-                        try:
-                            if response.history:
-
-                                for resp in response.history:
-
-                                    print("Redirect Found: " + WHITE +  resp.url + END)
-                                    
-                                print("Final Destination: " + BLUE + response.url + "\n" + END)
-                            else:
-                                pass
-                        except:
-                            print("Connection Error!")
-
-                    except requests.exceptions.RequestException:
-                        print(RED + "Requests error: " + URL + "\nContinue...\n" + END)
-                        continue
-
-                    except KeyboardInterrupt:
-                        print("Shutdown...")
-                        exit(0)
+                    for i in range(threads):
+                        worker = Thread(target=test, args=(line,payload))
+                        worker.setDaemon(True)
+                        worker.start()                    
 
 if __name__ == '__main__':
     banner()
@@ -82,10 +87,15 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--domain', help='Path of domains list', required=True)
     parser.add_argument('-p', '--payload', help='Path of payloads list', required=True)
     parser.add_argument('-i', '--include', help="Include a slash at end of URLs", action='store_true')
+    parser.add_argument('-t', '--threads', help="Number of threads")
     parser.add_argument('-v', '--verbose', help="Show more results", action="store_true")
     
     args = parser.parse_args()
     file = args.domain
     payloads = args.payload
-    
+    if args.threads:
+        threads = int(args.threads)
+    else:
+        threads = 10
+
     main()
