@@ -62,7 +62,7 @@ def test(line, payload):
             print("Connection Error!")
 
     except requests.exceptions.RequestException:
-        print(RED + "Requests error: " + URL + "\nContinue...\n" + END)
+        pass
 
     except KeyboardInterrupt:
         print("Shutdown...")
